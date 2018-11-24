@@ -48,8 +48,10 @@ class Dialog(qt_widgets.QDialog):
 
         frameStyle = qt_widgets.QFrame.Sunken | qt_widgets.QFrame.Panel
         layout = qt_widgets.QGridLayout()
-        layout.setColumnStretch(1, 1)
-        layout.setColumnMinimumWidth(1, 250)
+        layout.setColumnStretch(2, 5)
+        layout.setColumnStretch(1, 0)
+        layout.setColumnMinimumWidth(1, 75)
+        layout.setColumnMinimumWidth(2, 120)
 
         # generate a bunch of function-demo buttons and output labels:
         self.button = {}

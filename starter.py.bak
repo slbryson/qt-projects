@@ -201,7 +201,7 @@ class XStream(QObject):
 
     def write( self, msg ):
         if ( not self.signalsBlocked() ):
-            self.messageWritten.emit(str(msg))
+            self.messageWritten.emit(unicode(msg))
 
     @staticmethod
     def stdout():
