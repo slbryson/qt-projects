@@ -1,5 +1,13 @@
 import logging
 import sys
+try:
+    import configparser
+except:
+    from configparser import SafeConfigParser
+
+from configupdater import ConfigUpdater
+
+import os
 
 from PyQt5.QtCore import QObject,\
                          pyqtSignal
@@ -14,10 +22,54 @@ from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QAction, QMessageBox,QTextBrowser
 from PyQt5.QtWidgets import QCalendarWidget, QFontDialog, QColorDialog, QTextEdit, QFileDialog, QDialog, QVBoxLayout
 from PyQt5.QtWidgets import QCheckBox, QProgressBar, QComboBox, QLabel, QStyleFactory, QLineEdit, QInputDialog
-from PyQt5.QtWidgets import QGridLayout
+from PyQt5.QtWidgets import QGridLayout, QFrame
+
+from PyQt5 import QtGui, QtCore
+
+
+if sys.version_info < (3,):
+    import ConfigParser as configparser
+    unicode = str
+else:
+    import configparser
+    unicode = str
+#from PyQt5 import QtWidgets as qt_widgets
+
 
 logger = logging.getLogger(__name__)
 
+def ConfigSectionMap(section):
+    dict1 = {}
+    Config = configparser.ConfigParser()
+    Config.read("./config.ini")
+    options = Config.options(section)
+    for option in options:
+        try:
+            dict1[option] = Config.get(section, option)
+            if dict1[option] == -1:
+                print("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+    return dict1
+def save_config():
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read("./config.ini")
+
+        updater = ConfigUpdater()
+        try:
+            updater.read_file('config.ini')
+        except Exception as rt_err:
+            raise rt_err
+
+
+        # config.set('Configuration', 'locale', self.config['locale'])
+        # config.set('Configuration', 'font-size', self.config['font-size'])
+        # Try New format all together
+        for section_name in updater.sections():
+            print(section_name)
+
+            
 class XStream(QObject):
     _stdout = None
     _stderr = None
@@ -51,26 +103,55 @@ class XStream(QObject):
 class MyInputWindow(QMainWindow):
     def __init__( self, parent = None ):
         super(MyInputWindow, self).__init__(parent)
+        frameStyle = QFrame.Sunken | QFrame.Panel
 
         # setup the ui
-        self.setGeometry(50, 50, 800, 500)
-
-        self._console = QTextBrowser(self)
+        self.setGeometry(200, 100, 800, 500)
+        self.setWindowTitle('Bryson Input GUI')
+        #Console
+        #self._console = QTextBrowser(self)
         self._console = QTextEdit(self)
-        #self._console.move(5, 20)
-        self._console.resize(400,200)
+        self._console.move(300, 75)
+        self._console.resize(200,200)
+
+        #Button
         self._button  = QPushButton(self)
-        self._button.move(500,100)
+        self._button.move(40,400)
         self._button.setText('Test Me')
-        
+        self._button.clicked.connect(self.test)
+
+        # Add another Button to load config.ini data
+        self._dbButton = QPushButton(self)
+        self._dbButton.move(40,200)
+        self._dbButton.setText('DB File')
+        #output = get_string()
+        self._dbButton.clicked.connect(self.write_config)
+
+        # Create a label next to the button
+        self.label ={}
+        self.setStyleSheet("""QToolTip {
+                           color: black;
+                           }
+                           QLabel{
+                           background-color: white;
+                           }
+                        #    QPushButton {
+                        #    font-weight: bold;
+                           }""")
+        self.label['dailyPCP'] = QTextEdit(self)
+        self.label['dailyPCP'].move(180,200)
+        output = self.read_dbmaster()
+        self.label['dailyPCP'].setText(output)
+        #self.label['dailyPCP'].setFrameStyle(frameStyle)
+       
         # create the layout
-        layout = QGridLayout()
+        #layout = QGridLayout()
+        layout = QVBoxLayout()
         layout.addWidget(self._console)
         layout.addWidget(self._button)
-        layout.setColumnStretch(2, 5)
-        layout.setColumnStretch(1, 0)
-        layout.setColumnMinimumWidth(1, 75)
-        layout.setColumnMinimumWidth(2, 120)
+        layout.addWidget(self._dbButton)
+        layout.addWidget(self.label['dailyPCP'])
+
 
 
         openFile = QAction('&Open File', self)
@@ -80,23 +161,39 @@ class MyInputWindow(QMainWindow):
 
         # create connections
         #self.python_version_label = qt_widgets.QLabel()
-        n  = 3
-        layout.addWidget(self._console, n, 0, 2, 2)
+
         XStream.stdout().messageWritten.connect( self._console.insertPlainText )
         XStream.stderr().messageWritten.connect( self._console.insertPlainText )
 
         mainMenu = self.menuBar()
         fileMenu = mainMenu.addMenu('&File')
         fileMenu.addAction(openFile)
-        self._button.clicked.connect(self.test)
 
         self.home()
+        self.show()
+        self.raise_()
+
+ 
 
     def home(self):
-        btn = QPushButton('quit', self)
+        btn = QPushButton('Quit', self)
         btn.clicked.connect(self.close_application)
         btn.resize(btn.sizeHint())
-        btn.move(0, 100)
+        btn.move(10, 465)
+
+    def read_dbmaster(self):
+    #   Add somewhere
+        config = configparser.ConfigParser()
+        file_handler = ConfigSectionMap('main')
+        #The only thing that the user might specify is a filetype to limit on
+        master_file = file_handler['master']
+        self.label['dailyPCP'].setText("{}".format(master_file))
+        return master_file
+
+    def write_config(self):
+        save_config()
+        return
+
 
     def file_open(self):
         # need to make name an tupple otherwise i had an error and app crashed
@@ -135,6 +232,8 @@ class MyInputWindow(QMainWindow):
             sys.exit()
         else:
             pass
+
+    
 
 if ( __name__ == '__main__' ):
     logging.basicConfig()
